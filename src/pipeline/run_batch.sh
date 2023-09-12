@@ -1,6 +1,6 @@
 skip_libs=("")
-dir_root_libs=""
-dir_root_runs=""
+dir_root_libs="/small-rna-metavir/asset/libs/SRA_smallRNA/batch-15"
+dir_root_runs="./runs"
 
 for file in `ls ${dir_root_libs}/*.fasta`
 do

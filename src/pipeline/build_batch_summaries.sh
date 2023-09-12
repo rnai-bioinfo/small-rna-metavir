@@ -5,7 +5,7 @@
 
 dir_root_runs=""
 dir_summaries="./run-summaries"
-dir_host_lib_root=""
+# dir_host_lib_root=""
 path_output="./run-summaries.tar.gz"
 
 server_name=''
@@ -104,7 +104,8 @@ do
         path_input_line=`grep "^> Reads:" $path_exec_log | tail -n 1`
         path_input_img=`echo "$path_input_line" | grep -oE "'[^']+'" | awk -F"'" '{print $2}'`
         path_input_base=`echo "$path_input_img" | cut -f 7 -d "/"`
-        path_input="$dir_host_lib_root/$batch_name/$path_input_base"
+        # path_input="$dir_host_lib_root/$batch_name/$path_input_base"
+        path_input=$path_input_img
         echo $path_input_line >> $path_exec_summary_lines
         echo "path_input: $path_input" >> $path_exec_summary
         

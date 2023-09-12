@@ -467,8 +467,6 @@ print $time_msg;
 # -----------------------------------------------------------------------
 
 my $path_03_map_host_sam = "$step3/mapped_host.v1.sam";
-my $path_03_map_host_sam_aux = "$step3/mapped_host.v1_aux.sam";
-my $path_03_map_host_bam = "$step3/mapped_host.v1.bam";
 my $path_03_map_host_stats = "$step3/mapping_host.stats";
 
 my $path_04_unmap_vector_reads_fa = "$step4/unmappedVectorReads.fasta";
@@ -537,14 +535,17 @@ if (not defined($nohostfilter)) {
     print "\n[STEP 03]\n\t $exec3\n";
     `$exec3`;
 
-    # Count total reads
+    # #count total reads
     my $nReads = `grep -c '>' $path_02_trim_filtered_gt15_fa`;
     chomp($nReads);
 
-    # Compact .fasta to save disk usage
-    `gzip $path_02_trim_filtered_gt15_fa`;
-
+    # print metrics "#total reads\t".$nReads. # REVIEW: 2023-03-06 - What should we do with these 'special' logs?
+    # print interest "#total reads\t".$nReads. # REVIEW: 2023-03-06 - What should we do with these 'special' logs?
     print "# Total reads\t".$nReads."\n";
+
+    # 
+    # TODO: 2023-06-06 - Convert .sam into .bam
+    # 
 
     print "[PLOT GERAL DISTRIBUTION READS MAPPED HOST ]\n";
     my $exec3_1 = "perl $path_plot_dist_per_base_by_reads -sam $path_03_map_host_sam  -s $si -e $se -p $step3/mapped_host.v1.$si.$se -norm $nReads --plot";
@@ -554,12 +555,6 @@ if (not defined($nohostfilter)) {
 
     print "[PLOT GERAL DISTRIBUTION READS MAPPED HOST - 15-35nt ]\n";
     my $exec3_11 = "perl $path_plot_dist_per_base_by_reads -sam $path_03_map_host_sam  -s 15 -e 35 -p $step3/mapped_host.v1 -norm $nReads --plot";
-
-    # Turn .sam into .bam files
-    `grep -v "Mt" $path_03_map_host_sam > $path_03_map_host_sam_aux`;
-    `samtools view -Sb $path_03_map_host_sam_aux > $path_03_map_host_bam`;
-    `rm $path_03_map_host_sam`;
-    `rm $path_03_map_host_sam_aux`;
     
     print "\n[STEP 03]\n\t $exec3_11\n";
     `$exec3_11`;
@@ -568,8 +563,16 @@ if (not defined($nohostfilter)) {
     chomp($nReadsUnmapHost);
     my $mapped = $nReads - $nReadsUnmapHost;
 
+    # Mapped reads HOST
+    # print interest "# Reads mapped host\t".$mapped. # REVIEW: 2023-03-06 - What should we do with these 'special' logs?
     print "# Reads mapped host\t".$mapped."\n";
+    
+    # Unmapped reads HOST
+    # print interest "# Reads unmapped host\t".$nReadsUnmapHost. # REVIEW: 2023-03-06 - What should we do with these 'special' logs?
     print "# Reads unmapped host\t".$nReadsUnmapHost."\n";
+
+    # Deleting sam file mapped reads on host genome
+    # `rm -rf $path_03_map_host_sam`;
 
     # Mapping Host - filtered reads against bacters reference
     print "[MAPPING HOST-FILTERED READS AGAINST BACTERIAL GENOMES]... \n";
@@ -582,7 +585,12 @@ if (not defined($nohostfilter)) {
     chomp($nReadsUnmapHostBac);
     $mappedbac = $nReadsUnmapHost - $nReadsUnmapHostBac;
 
+    # Mapped reads Bacterial genomes
+    # print metrics "# Reads mapped bacter\t".$mappedbac. # REVIEW: 2023-03-06 - What should we do with these 'special' logs?
     print "# Reads mapped bacter\t".$mappedbac."\n";
+    
+    # Pre processed reads
+    # print metrics "# Preprocessed reads\t".$nReadsUnmapHostBac. # REVIEW: 2023-03-06 - What should we do with these 'special' logs?
     print "# Preprocessed reads\t".$nReadsUnmapHostBac."\n";
     
     print "\n PRE-PROCESSING FINISHED \n";
@@ -1571,31 +1579,6 @@ $last_time = $current_time;
 
 print STDOUT $time_msg;
 print $time_msg;
-
-#######################################################################
-### Compress step 04 .fasta files -------------------------------------
-#######################################################################
-
-$step_name = "Compress step 04 .fasta files";
-
-$time_msg = getStepTimebBeginMsg($exec_id, $step_name);
-print STDOUT $time_msg;
-print $time_msg;
-
-# -----------------------------------------------------------------------
-
-`for f in $step4/*.fasta; do gzip \$f; done;`;
-
-# -----------------------------------------------------------------------
-
-$current_time = Time::HiRes::gettimeofday();
-$time_msg = getStepTimeEndMsg($exec_id, $step_name, $last_time, $current_time);
-$last_time = $current_time;
-
-print STDOUT $time_msg;
-print $time_msg;
-
-#######################################################################
 
 #######################################################################
 ### Classifying virus × EVEs ------------------------------------------

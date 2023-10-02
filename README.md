@@ -20,18 +20,18 @@
   An automated independent of sequence similarity tool for viral sequences identification using RNA-seq metagenomics small RNA reads.
 </p>
 
-## Table of Contents -->
+## Table of Contents
 
 - [About](#about)
 - [Getting Started](#getting_started)
 <!-- - [Deployment](#deployment) -->
 <!-- - [Usage](#usage) -->
-<!-- - [Built Using](#built_using) --> -->
+<!-- - [Built Using](#built_using) -->
 <!-- - [Contributing](../CONTRIBUTING.md) -->
 <!-- - [Authors](#authors) -->
 <!-- - [Acknowledgments](#acknowledgement) -->
 
-## About <a name = "about"></a>
+## About <a name="about"></a>
 
 This is an automated tool designed to support the identification of viral sequences in an independent of sequence similarity way. By exploring the unique signatures of small RNA size profiles, the tool can detect viral contigs among sequences that were previously not identified by sequence similarity search tools like BLAST or Diamond.
 

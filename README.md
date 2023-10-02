@@ -20,17 +20,16 @@
   An automated independent of sequence similarity tool for viral sequences identification using RNA-seq metagenomics small RNA reads.
 </p>
 
-<!-- ## Table of Contents -->
+## Table of Contents -->
 
-<!-- - [About](#about) -->
-<!-- - [Getting Started](#getting_started) -->
+- [About](#about)
+- [Getting Started](#getting_started)
 <!-- - [Deployment](#deployment) -->
-<!-- - [Usage](#usage)
-- [Built Using](#built_using) -->
-<!-- - [TODO](../TODO.md) -->
-<!-- - [Contributing](../CONTRIBUTING.md)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgement) -->
+<!-- - [Usage](#usage) -->
+<!-- - [Built Using](#built_using) --> -->
+<!-- - [Contributing](../CONTRIBUTING.md) -->
+<!-- - [Authors](#authors) -->
+<!-- - [Acknowledgments](#acknowledgement) -->
 
 ## About <a name = "about"></a>
 
@@ -39,14 +38,22 @@ This is an automated tool designed to support the identification of viral sequen
 _Small RNA Metavir_ includes a data engineering pipeline to assemble and classify contigs using small RNA sequencing reads. Initially, assembled contigs are classified as `viral`, `non-viral`, or `unknown` using sequence similarity methods. Following that, small RNA size profiles are generated for each contig, resulting in structured representations that can be further analyzed by traditional machine learning algorithms. A Random Forest classifier, trained with small RNA size profile representations of over 1300 curated sequences, is used to refine the classification. The output is made of all assembled contigs represented by numerical features, classified as either `non-viral`, `unknown`, `viral`, or `EVEs`.
 
 
-<!-- ## 🏁 Getting Started <a name = "getting_started"></a>
+## Getting Started <a name="getting_started"></a>
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
+<!-- These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system. -->
 
-### Prerequisites
+### Dependencies
 
-What things you need to install the software and how to install them.
+__Host and bacteria genome references__
 
+To filter host genome and bacteria reads the user needs to have these respective reference sequence `.fasta` files.
+
+__Nucleotide and amino acid databases__
+
+To run the sequence similarity based classification stages the user must provide the corresponding `nt` and `nr` databse files.
+
+
+<!-- 
 ```
 Give examples
 ```

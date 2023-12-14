@@ -1,43 +1,48 @@
-#!/bin/bash
+# TODO: Arg "prefered runtime"
+# TODO: Arg "config file path"
 
-# # Check if both file path arguments are provided
-# if [ "$#" -ne 2 ]; then
-#     echo "Usage: $0 <file_path_1> <file_path_2>"
-#     exit 1
-# fi
+is_verbose="true"
+runtime=""
 
-# Define image name and container name
-image_name="small_rna_metavir"
-container_name="small_rna_metavir"
+# ===========================================================================
+# ---  Set container runtime ------------------------------------------------
+# ===========================================================================
 
-# Check if the Docker image exists
-if ! docker image inspect "$image_name" &> /dev/null; then
-    echo "Image '$image_name' does not exist. Building the image..."
-    docker build . --target=small_rna_metavir -t small_rna_metavir
+# Check if Docker is present and running
+if [ "$is_verbose" = "true" ]; then
+    echo "Searching for Docker runtime..."
 fi
 
-# Start the Docker container with volumes mapped
-docker run -d --name "$container_name" -v "$1":/path/in/container/file1 -v "$2":/path/in/container/file2 "$image_name"
+if command -v docker &> /dev/null && docker run hello-world &>/dev/null; then
+    runtime="docker"
+else
 
-# Execute a command inside the running container
-docker exec "$container_name" your_command_here
+    # Check if podman is present and running
+    if [ "$is_verbose" = "true" ]; then
+        echo "Docker runtime not detected"
+        echo ""
+        echo "Searching podman runtime..."
+    fi
 
-# To stop and remove the container after running the command:
-# docker stop "$container_name"
-# docker rm "$container_name"
+    if command -v podman &> /dev/null && podman run hello-world &> /dev/null; then
+        runtime="podman"
+    elif [ "$is_verbose" = "true" ]; then
+        echo "podman runtime not detected"
+    fi
+fi
 
+if [ -z "$runtime" ]; then
+    echo "[ERROR] You need a container runtime. Neither Docker nor podman could be found."
+    exit 1
+fi
 
+if [ "$is_verbose" = "true" ]; then
+    echo "Using $runtime runtime..."
+fi
 
-docker run \
-    -d -t \
-    --name perl \
-    -v .:/src \
-    perl:5.16.3
+# ===========================================================================
+# --- Set image up ----------------------------------------------------------
+# ===========================================================================
 
-
-docker run 
-    -d 
-    --name "$container_name" 
-    -v "$1":/path/in/container/file1 
-    -v "$2":/path/in/container/file2 
-    "$image_name"
+# OK
+exit 0

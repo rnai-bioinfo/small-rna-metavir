@@ -54,30 +54,41 @@ sub logMessage {
     my $msg = $_[0];
     $msg = "$msg\n";
     
-    print $LOG_MAIN_FH $msg;
-    
-    if ($is_verbose) {
-        print STDOUT $msg;
-    }
+    print $LOG_MAIN_FH "[info] $msg";
+    $is_verbose && print STDOUT $msg."\n";
 }
 
 sub printErrorAndDie {
     
-    my $msg = $_[0] or die "Program fineshed unexpectadly";
+    my $msg = $_[0] // "Program finished unexpectadly";
     $msg = "[ERROR] $msg";
 
-    print $LOG_MAIN_FH $msg;
-    print STDERR $msg;
-    
+    print $LOG_MAIN_FH $msg."\n";
+    print STDERR $msg."\n";
     print STDOUT $msg;
-    print STDOUT "Check '".PATH_LOG_ERR."' for details\n";
+    print STDOUT "\nCheck '".PATH_LOG_ERR."' for details\n";
+    
     exit 1;
 }
 
 sub execCommand {
+    # 
+    # TODO: 2024-01-12 - ADD Description
+    # 
+
     my $cmd = $_[0];
     print $LOG_MAIN_FH "[cmd] $cmd\n";
-    return `$cmd`;
+    
+    $cmd = "$cmd 2> ".PATH_LOG_ERR;
+    # my $exitStatus = system($cmd);
+    my $output = `$cmd`;
+
+    # '$?' has the 16bits exit status of the last command (8 for the actual status + 8 for aditional info).
+    # So we bitwise shift this value right to stay get the actual staus value (hopefully 0)
+    my $exit_status = $? >> 8;
+    $exit_status && printErrorAndDie();
+
+    return $output;
 }
 
 # ===========================================================================
@@ -85,14 +96,15 @@ sub execCommand {
 # ===========================================================================
 
 my $runtime = "";
-# if (`command -v docker 2>/dev/null` and `docker run hello-world 2>/dev/null`) {
-if (execCommand("command -v docker 2>/dev/null") && execCommand("docker run hello-world 2>/dev/null")) {
+
+# if (execCommand("command -v docker 2>/dev/null") && execCommand("docker run hello-world 2>/dev/null")) {
+if (execCommand("docker image inspect some_docker_image") && execCommand("docker run hello-world 2>/dev/null")) {
     $runtime = RUNTIME_DOCKER;
 } else {
     printErrorAndDie("You need a container runtime but neither Docker nor podman could be found");
 }
 
-logMessage("Using $runtime runtime...\n");
+logMessage("Using $runtime runtime...");
 
 # ===========================================================================
 # --- Set running container up ----------------------------------------------
@@ -102,7 +114,6 @@ my $imgNameAndTag = IMG_NAME.":".IMG_TAG;
 my $command = "";
 
 # Build image
-# $command = "$runtime image inspect \"$imgNameAndTag\" &> /dev/null";
 $command = "$runtime image inspect \"$imgNameAndTag\"";
 
 if (not execCommand($command)) {
@@ -111,11 +122,14 @@ if (not execCommand($command)) {
 
     $command = "$runtime build -t $imgNameAndTag ".PATH_DOCKERFILE;
     if (execCommand($command)) {
-        logMessage("Image '$imgNameAndTag' successfully build");
+        logMessage("Image '$imgNameAndTag' successfully built");
     } else {
         printErrorAndDie("Failure on trying to build image '$imgNameAndTag'");
     }
 }
+
+# printErrorAndDie("This is a test...");
+# exit 0;
 
 # Run container
 $command = "$runtime ps -f \"name=".CONTAINER_NAME."\" | grep -q \"".CONTAINER_NAME."\"";

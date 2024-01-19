@@ -13,6 +13,7 @@ use warnings;
 # TODO: 2023-12-09 - Rethink about make the container to keep running
 # TODO: 2024-01-18 - Measure execution time
 # TODO: 2024-01-18 - Generate a new log file for each execution
+# TODO: 2024-01-18 - Add suport for chosing among development or production container version
 # 
 
 use constant RUNTIME_DOCKER => "docker";
@@ -21,22 +22,12 @@ use constant RUNTIME_DOCKER => "docker";
 # use constant IMG_NAME => "small_rna_metavir";
 use constant IMG_NAME => "small_rna_metavir_dev";
 use constant IMG_TAG =>  "latest";
+# use constant CONTAINER_TARGET => "_";
 use constant CONTAINER_NAME => "small_rna_metavir";
 
 use constant PATH_LOG_MAIN => "./small_rna_metavir.log";
 use constant PATH_DOCKERFILE =>  ".";
 # use constant PATH_DOCKERFILE =>  "invalid/path";
-
-# 
-# TODO: 2024-01-18 - Place it some place better
-# 
-# ERROR POLICY
-# 0 => Fail on error
-# 1 => Do not fail & return empty
-# 2 => Ignore error & return command output
-use constant ERR_POLICE_FAIL => 0;
-use constant ERR_POLICE_RETURN_EMPTY => 1;
-# use constant ERR_POLICE_RETURN_ERR => 2;
 
 # ===========================================================================
 # --- Set up logging files --------------------------------------------------
@@ -88,7 +79,6 @@ sub execCommand {
     # TODO: 2024-01-12 - ADD Description
     # 
     my $cmd = $_[0];
-    my $errorPolice = $_[1] // ERR_POLICE_FAIL;
 
     print $LOG_MAIN_FH "[command] $cmd\n";
     print STDOUT "[command] $cmd\n";
@@ -114,8 +104,6 @@ sub execCommand {
     # print $LOG_MAIN_FH ">>> \$exitStatus == $exitStatus >>><<< \$output == $output \n\n";
 
     !$exitStatus && return $output;
-    $errorPolice == ERR_POLICE_RETURN_EMPTY && return;
-    printErrorAndDie();
 }
 
 # ===========================================================================
@@ -126,9 +114,7 @@ my $runtime = "";
 
 logMessage("Checking if Docker is available...");
 
-if (execCommand("command -v docker 2>/dev/null", ERR_POLICE_RETURN_EMPTY)
-    && execCommand("docker run hello-world 2>/dev/null", ERR_POLICE_RETURN_EMPTY)
-) {
+if (execCommand("command -v docker 2>/dev/null") && execCommand("docker run hello-world 2>/dev/null")) {
     $runtime = RUNTIME_DOCKER;
 } else {
     logMessage("Docker doesn't seem to be available.");
@@ -151,12 +137,12 @@ my $command = "";
 # $command = "$runtime images $imgNameAndTag";
 $command = "$runtime image inspect \"$imgNameAndTag\"";
 
-if (not execCommand($command, ERR_POLICE_RETURN_EMPTY)) {
+if (not execCommand($command)) {
     
     logMessage("Image '$imgNameAndTag' doesn't exist. Trying to build it now...");
 
     $command = "$runtime build -t $imgNameAndTag ".PATH_DOCKERFILE;
-    if (execCommand($command, ERR_POLICE_FAIL)) {
+    if (execCommand($command)) {
         logMessage("Image '$imgNameAndTag' successfully built");
     } else {
         printErrorAndDie("Failure on trying to build image '$imgNameAndTag'");

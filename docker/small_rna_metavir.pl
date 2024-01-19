@@ -11,7 +11,8 @@ use warnings;
 # TODO: 2023-12-09 - Arg "config file path"
 # TODO: 2023-12-09 - Rethink about this script location
 # TODO: 2023-12-09 - Rethink about make the container to keep running
-# TODO: 2023-12-09 - Redirect errors / warnings into a log file
+# TODO: 2024-01-18 - Measure execution time
+# TODO: 2024-01-18 - Generate a new log file for each execution
 # 
 
 use constant RUNTIME_DOCKER => "docker";
@@ -23,27 +24,39 @@ use constant IMG_TAG =>  "latest";
 use constant CONTAINER_NAME => "small_rna_metavir";
 
 use constant PATH_LOG_MAIN => "./small_rna_metavir.log";
-use constant PATH_LOG_ERR => "./small_rna_metavir.err.log";
 use constant PATH_DOCKERFILE =>  ".";
+# use constant PATH_DOCKERFILE =>  "invalid/path";
+
+# 
+# TODO: 2024-01-18 - Place it some place better
+# 
+# ERROR POLICY
+# 0 => Fail on error
+# 1 => Do not fail & return empty
+# 2 => Ignore error & return command output
+use constant ERR_POLICE_FAIL => 0;
+use constant ERR_POLICE_RETURN_EMPTY => 1;
+# use constant ERR_POLICE_RETURN_ERR => 2;
 
 # ===========================================================================
 # --- Set up logging files --------------------------------------------------
 # ===========================================================================
 
 my $LOG_MAIN_FH;
-my $LOG_ERR_FH;
 
-open($LOG_MAIN_FH, ">>", PATH_LOG_MAIN) or die "Couldn't open: $!"; # $! is a special variable holding the error
-open($LOG_ERR_FH, ">>", PATH_LOG_ERR) or die "Couldn't open: $!"; # $! is a special variable holding the error
+# open($LOG_MAIN_FH, ">>", PATH_LOG_MAIN) or die "Couldn't open log file: $!"; # $! is a special variable holding the error
+open($LOG_MAIN_FH, ">", PATH_LOG_MAIN) or die "Couldn't open log file: $!"; # $! is a special variable holding the error
 
-*STDERR = $LOG_ERR_FH;
-select $LOG_MAIN_FH;
+# *STDERR = $LOG_ERR_FH;
+# select $LOG_MAIN_FH;
 
 # ===========================================================================
 # --- Parse input -----------------------------------------------------------
 # ===========================================================================
 
-my $is_verbose = 1;
+# 
+# TODO: 2024-01-18 - Read user defined parameters
+# 
 
 # ===========================================================================
 # TODO: ADD Description -------------------------------------------------
@@ -52,21 +65,20 @@ my $is_verbose = 1;
 sub logMessage {
     
     my $msg = $_[0];
-    $msg = "$msg\n";
+    $msg = "[info] $msg\n";
     
-    print $LOG_MAIN_FH "[info] $msg";
-    $is_verbose && print STDOUT $msg."\n";
+    print $LOG_MAIN_FH $msg;
+    print STDOUT $msg;
 }
 
 sub printErrorAndDie {
     
     my $msg = $_[0] // "Program finished unexpectadly";
-    $msg = "[ERROR] $msg";
+    $msg = "\n[ERROR] $msg\n";
 
-    print $LOG_MAIN_FH $msg."\n";
-    print STDERR $msg."\n";
-    print STDOUT $msg;
-    print STDOUT "\nCheck '".PATH_LOG_ERR."' for details\n";
+    print $LOG_MAIN_FH $msg;
+    print STDERR $msg;
+    print STDOUT "Check '".PATH_LOG_MAIN."' for details\n";
     
     exit 1;
 }
@@ -75,20 +87,35 @@ sub execCommand {
     # 
     # TODO: 2024-01-12 - ADD Description
     # 
-
     my $cmd = $_[0];
-    print $LOG_MAIN_FH "[cmd] $cmd\n";
+    my $errorPolice = $_[1] // ERR_POLICE_FAIL;
+
+    print $LOG_MAIN_FH "[command] $cmd\n";
+    print STDOUT "[command] $cmd\n";
     
-    $cmd = "$cmd 2> ".PATH_LOG_ERR;
-    # my $exitStatus = system($cmd);
-    my $output = `$cmd`;
+    # $cmd = "$cmd 2> ".PATH_LOG_MAIN;
+    
+    open my $pipe, "$cmd 2>&1 |" or die "Failed to execute command: $!\n"; # Redirect STDERR into STDOUT
+    my $output = ""; # `$cmd`;
+    
+    while (<$pipe>) {
+        $output .= $_;
+        print $LOG_MAIN_FH $_;
+        print STDOUT $_;
+    }
+
+    close $pipe;
 
     # '$?' has the 16bits exit status of the last command (8 for the actual status + 8 for aditional info).
-    # So we bitwise shift this value right to stay get the actual staus value (hopefully 0)
-    my $exit_status = $? >> 8;
-    $exit_status && printErrorAndDie();
+    # So we bitwise shift this value to the right to get the actual staus value (hopefully 0)
+    my $exitStatus = $? >> 8;
 
-    return $output;
+    # print STDOUT ">>> \$exitStatus == $exitStatus >>><<< \$output == $output \n\n";
+    # print $LOG_MAIN_FH ">>> \$exitStatus == $exitStatus >>><<< \$output == $output \n\n";
+
+    !$exitStatus && return $output;
+    $errorPolice == ERR_POLICE_RETURN_EMPTY && return;
+    printErrorAndDie();
 }
 
 # ===========================================================================
@@ -97,10 +124,17 @@ sub execCommand {
 
 my $runtime = "";
 
-# if (execCommand("command -v docker 2>/dev/null") && execCommand("docker run hello-world 2>/dev/null")) {
-if (execCommand("docker image inspect some_docker_image") && execCommand("docker run hello-world 2>/dev/null")) {
+logMessage("Checking if Docker is available...");
+
+if (execCommand("command -v docker 2>/dev/null", ERR_POLICE_RETURN_EMPTY)
+    && execCommand("docker run hello-world 2>/dev/null", ERR_POLICE_RETURN_EMPTY)
+) {
     $runtime = RUNTIME_DOCKER;
 } else {
+    logMessage("Docker doesn't seem to be available.");
+}
+
+if (!$runtime) {
     printErrorAndDie("You need a container runtime but neither Docker nor podman could be found");
 }
 
@@ -114,37 +148,38 @@ my $imgNameAndTag = IMG_NAME.":".IMG_TAG;
 my $command = "";
 
 # Build image
+# $command = "$runtime images $imgNameAndTag";
 $command = "$runtime image inspect \"$imgNameAndTag\"";
 
-if (not execCommand($command)) {
+if (not execCommand($command, ERR_POLICE_RETURN_EMPTY)) {
     
-    logMessage("Image '$imgNameAndTag' doesn't exist. We're building it now");
+    logMessage("Image '$imgNameAndTag' doesn't exist. Trying to build it now...");
 
     $command = "$runtime build -t $imgNameAndTag ".PATH_DOCKERFILE;
-    if (execCommand($command)) {
+    if (execCommand($command, ERR_POLICE_FAIL)) {
         logMessage("Image '$imgNameAndTag' successfully built");
     } else {
         printErrorAndDie("Failure on trying to build image '$imgNameAndTag'");
     }
 }
 
-# printErrorAndDie("This is a test...");
-# exit 0;
+# # printErrorAndDie("This is a test...");
+# # exit 0;
 
-# Run container
-$command = "$runtime ps -f \"name=".CONTAINER_NAME."\" | grep -q \"".CONTAINER_NAME."\"";
+# # Run container
+# $command = "$runtime ps -f \"name=".CONTAINER_NAME."\" | grep -q \"".CONTAINER_NAME."\"";
 
-if (not execCommand($command)) {
+# if (not execCommand($command)) {
     
-    logMessage("Container '".CONTAINER_NAME."' isn't running. we're starting it now...");
+#     logMessage("Container '".CONTAINER_NAME."' isn't running. we're starting it now...");
 
-    $command = "$runtime run -d -t --name ".CONTAINER_NAME." $imgNameAndTag &> /dev/null";
-    if (execCommand($command)) {
-        logMessage("Container '".CONTAINER_NAME."' successfully started");
-    } else {
-        printErrorAndDie("Failure on trying to start ontainer '".CONTAINER_NAME."'");
-    }
-}
+#     $command = "$runtime run -d -t --name ".CONTAINER_NAME." $imgNameAndTag &> /dev/null";
+#     if (execCommand($command)) {
+#         logMessage("Container '".CONTAINER_NAME."' successfully started");
+#     } else {
+#         printErrorAndDie("Failure on trying to start ontainer '".CONTAINER_NAME."'");
+#     }
+# }
 
 # ===========================================================================
 # --- Run pipeline over libraries -------------------------------------------

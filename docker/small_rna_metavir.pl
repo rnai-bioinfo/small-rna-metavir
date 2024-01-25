@@ -131,41 +131,56 @@ logMessage("Using $runtime runtime...");
 # ===========================================================================
 
 my $imgNameAndTag = IMG_NAME.":".IMG_TAG;
-my $command = "";
 
 # Build image
-# $command = "$runtime images $imgNameAndTag";
-$command = "$runtime image inspect \"$imgNameAndTag\"";
+logMessage("Checking if image '$imgNameAndTag' exists...");
 
-if (not execCommand($command)) {
+if (not execCommand("$runtime image inspect \"$imgNameAndTag\"")) {
     
     logMessage("Image '$imgNameAndTag' doesn't exist. Trying to build it now...");
 
-    $command = "$runtime build -t $imgNameAndTag ".PATH_DOCKERFILE;
-    if (execCommand($command)) {
+    if (execCommand("$runtime build -t $imgNameAndTag ".PATH_DOCKERFILE)) {
         logMessage("Image '$imgNameAndTag' successfully built");
     } else {
         printErrorAndDie("Failure on trying to build image '$imgNameAndTag'");
     }
 }
 
-# # printErrorAndDie("This is a test...");
-# # exit 0;
+logMessage("Image '$imgNameAndTag' exists.");
 
-# # Run container
-# $command = "$runtime ps -f \"name=".CONTAINER_NAME."\" | grep -q \"".CONTAINER_NAME."\"";
+# Run container
+logMessage("Checking if container '".CONTAINER_NAME."' is running...");
 
-# if (not execCommand($command)) {
+if (not execCommand("$runtime ps | grep ".CONTAINER_NAME)) {
     
-#     logMessage("Container '".CONTAINER_NAME."' isn't running. we're starting it now...");
+    my $hasError = 0;
+    logMessage("Container '".CONTAINER_NAME."' isn't running. Checking if it exists...");
 
-#     $command = "$runtime run -d -t --name ".CONTAINER_NAME." $imgNameAndTag &> /dev/null";
-#     if (execCommand($command)) {
-#         logMessage("Container '".CONTAINER_NAME."' successfully started");
-#     } else {
-#         printErrorAndDie("Failure on trying to start ontainer '".CONTAINER_NAME."'");
-#     }
-# }
+    # Create container if it doesn't exist
+    if (not execCommand("$runtime ps -a | grep ".CONTAINER_NAME)) {
+        
+        logMessage("Container '".CONTAINER_NAME."' doesn't exist. We're creating it now...");
+        
+        if (not execCommand("$runtime run -d -t --name ".CONTAINER_NAME." $imgNameAndTag")) {
+            $hasError = 1;
+        }
+
+    # Restart container if it already exists
+    } else {
+        
+        logMessage("Container '".CONTAINER_NAME."' already exist. We're restarting it now...");
+        
+        if (not execCommand("$runtime start ".CONTAINER_NAME)) {
+            $hasError = 1;
+        }
+    }
+
+    if ($hasError) {
+        printErrorAndDie("Failure as trying to start container '".CONTAINER_NAME."'");
+    }
+}
+
+logMessage("Container '".CONTAINER_NAME."' is running...");
 
 # ===========================================================================
 # --- Run pipeline over libraries -------------------------------------------
